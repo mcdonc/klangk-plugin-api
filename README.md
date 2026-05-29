@@ -1,6 +1,6 @@
-# bark_plugin_api
+# klangk_plugin_api
 
-Dart API package for [Bark](https://github.com/mcdonc/bark) plugins.
+Dart API package for [Klangk](https://github.com/mcdonc/klangk) plugins.
 
 ## Usage
 
@@ -10,15 +10,15 @@ Add this package as a dependency in your plugin's `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  bark_plugin_api:
+  klangk_plugin_api:
     git:
-      url: https://github.com/mcdonc/bark-plugin-api.git
+      url: https://github.com/mcdonc/klangk-plugin-api.git
 ```
 
 Then import it in your plugin:
 
 ```dart
-import 'package:bark_plugin_api/bark_plugin_api.dart';
+import 'package:klangk_plugin_api/klangk_plugin_api.dart';
 
 class MyPlugin extends ToolPlugin {
   @override
@@ -37,5 +37,5 @@ class MyPlugin extends ToolPlugin {
 - `ToolPlugin` — abstract base class for plugins
 - `ToolHandler` — function type for action handlers
 - `ToolPluginRegistry` — plugin registration and dispatch
-- `baseUrl` — the Bark backend API base URL (for plugins that need HTTP access)
+- `baseUrl` — the Klangk backend API base URL (for plugins that need HTTP access)
 - `testBaseUrlOverride` — override for testing

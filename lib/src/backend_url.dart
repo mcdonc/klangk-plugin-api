@@ -5,7 +5,7 @@ import 'backend_url_stub.dart'
 String? testBaseUrlOverride;
 
 /// Get the base URL path for API calls.
-/// Returns '' for root, '/bark' for subpath (no trailing slash).
+/// Returns '' for root, '/klangk' for subpath (no trailing slash).
 String get baseUrl {
   if (testBaseUrlOverride != null) return testBaseUrlOverride!;
   return getBaseUrlFromDom();

@@ -1,5 +1,5 @@
-name: bark_plugin_api
-description: API package for Bark plugins — provides ToolPlugin base class and backend URL utilities.
+name: klangk_plugin_api
+description: API package for Klangk plugins — provides ToolPlugin base class and backend URL utilities.
 publish_to: none
 version: 0.1.0
 
