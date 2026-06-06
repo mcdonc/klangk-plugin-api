@@ -76,10 +76,13 @@ class ToolPluginRegistry {
     return handler(request);
   }
 
-  /// Dispose all plugins.
+  /// Dispose all plugins and clear the registry.
   void disposeAll() {
     for (final plugin in _plugins) {
       plugin.dispose();
     }
+    _plugins.clear();
+    _handlers.clear();
+    _streamingHandlers.clear();
   }
 }
