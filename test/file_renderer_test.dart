@@ -78,6 +78,25 @@ void main() {
     test('mimeType defaults to null', () {
       expect(makeFile().mimeType, isNull);
     });
+
+    test('saveText defaults to null (read-only)', () {
+      expect(makeFile().saveText, isNull);
+    });
+
+    test('saveText, when provided, persists content', () async {
+      String? saved;
+      final file = RenderableFile(
+        path: 'a.txt',
+        name: 'a.txt',
+        extension: 'txt',
+        readText: () async => 'old',
+        readBytes: () async => Uint8List.fromList([0]),
+        downloadUrl: 'u',
+        saveText: (content) async => saved = content,
+      );
+      await file.saveText!('new content');
+      expect(saved, 'new content');
+    });
   });
 
   group('FileRenderer', () {

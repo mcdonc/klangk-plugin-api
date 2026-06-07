@@ -16,6 +16,7 @@ class RenderableFile {
     required this.readBytes,
     required this.downloadUrl,
     this.mimeType,
+    this.saveText,
   });
 
   /// Full path within the workspace (e.g. `docs/readme.md`).
@@ -38,6 +39,11 @@ class RenderableFile {
 
   /// Absolute URL the file can be downloaded from.
   final String downloadUrl;
+
+  /// Persists [content] back to the file. Null when the file is read-only
+  /// (the panel injects this only when a save path is available); editor
+  /// renderers should treat null as "editing is local-only / disabled".
+  final Future<void> Function(String content)? saveText;
 }
 
 /// Renders a particular kind of file. Contributed by the built-in set or a
