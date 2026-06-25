@@ -42,6 +42,21 @@ class SimplePlugin extends ToolPlugin {
       };
 }
 
+/// Plugin that contributes a route.
+class RoutedPlugin extends ToolPlugin {
+  @override
+  Map<String, ToolHandler> get handlers => {};
+
+  @override
+  List<PluginRoute> get routes => [
+        PluginRoute(
+          path: '/my-callback',
+          builder: (context, pathParams, queryParams) =>
+              Text('token=${queryParams['token']}'),
+        ),
+      ];
+}
+
 void main() {
   late ToolPluginRegistry registry;
 
@@ -132,6 +147,11 @@ void main() {
   });
 
   group('ToolPlugin defaults', () {
+    test('routes defaults to empty', () {
+      final plugin = SimplePlugin();
+      expect(plugin.routes, isEmpty);
+    });
+
     test('streamingHandlers defaults to empty', () {
       final plugin = SimplePlugin();
       expect(plugin.streamingHandlers, isEmpty);
@@ -151,6 +171,39 @@ void main() {
       final plugin = SimplePlugin();
       // Should not throw
       plugin.dispose();
+    });
+  });
+
+  group('PluginRoute', () {
+    testWidgets('constructor stores path and builder', (tester) async {
+      late BuildContext ctx;
+      await tester.pumpWidget(Builder(builder: (c) {
+        ctx = c;
+        return const SizedBox();
+      }));
+      final route = PluginRoute(
+        path: '/test',
+        builder: (context, pathParams, queryParams) =>
+            Text('v=${queryParams['v']}'),
+      );
+      expect(route.path, '/test');
+      final widget = route.builder(ctx, {}, {'v': '42'});
+      expect(widget, isA<Text>());
+    });
+  });
+
+  group('ToolPluginRegistry.routes', () {
+    test('collects routes from all plugins', () {
+      registry.register(RoutedPlugin());
+      registry.register(SimplePlugin());
+      final routes = registry.routes;
+      expect(routes, hasLength(1));
+      expect(routes.first.path, '/my-callback');
+    });
+
+    test('returns empty when no plugins have routes', () {
+      registry.register(SimplePlugin());
+      expect(registry.routes, isEmpty);
     });
   });
 
