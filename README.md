@@ -29,6 +29,16 @@ class MyPlugin extends ToolPlugin {
   Future<String> _handle(Map<String, dynamic> request) async {
     return 'Hello from my plugin!';
   }
+
+  @override
+  List<PluginRoute> get routes => [
+    PluginRoute(
+      path: '/my-callback',
+      builder: (context, pathParams, queryParams) {
+        return Text('Token: ${queryParams['token']}');
+      },
+    ),
+  ];
 }
 ```
 
@@ -36,6 +46,8 @@ class MyPlugin extends ToolPlugin {
 
 - `ToolPlugin` — abstract base class for plugins
 - `ToolHandler` — function type for action handlers
+- `StreamingToolHandler` — function type for streaming action handlers
+- `PluginRoute` — route descriptor for plugin-contributed app routes
 - `ToolPluginRegistry` — plugin registration and dispatch
 - `baseUrl` — the Klangk backend API base URL (for plugins that need HTTP access)
 - `testBaseUrlOverride` — override for testing
