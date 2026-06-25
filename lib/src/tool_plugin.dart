@@ -15,6 +15,23 @@ typedef StreamingToolHandler = Future<String> Function(
   ToolChunkSink emit,
 );
 
+/// A route contributed by a plugin. The host app converts these into
+/// framework-specific route objects (e.g. GoRoute).
+class PluginRoute {
+  /// The path pattern (e.g. '/soliplex-auth-callback').
+  final String path;
+
+  /// Builder that creates the widget for this route. Receives the path
+  /// parameters and query parameters from the URL.
+  final Widget Function(
+    BuildContext context,
+    Map<String, String> pathParameters,
+    Map<String, String> queryParameters,
+  ) builder;
+
+  const PluginRoute({required this.path, required this.builder});
+}
+
 /// A plugin that provides tool action handlers and optional overlay UI.
 abstract class ToolPlugin {
   /// Action names this plugin handles.
@@ -28,6 +45,11 @@ abstract class ToolPlugin {
   /// Optional overlay widget to mount in the workspace Stack.
   /// Return null if this plugin has no UI.
   Widget? buildOverlay(BuildContext context) => null;
+
+  /// Optional routes this plugin contributes to the app's router.
+  /// The host app collects these from all plugins at startup and adds
+  /// them to its route table. Defaults to none.
+  List<PluginRoute> get routes => const [];
 
   /// Called when the plugin is disposed.
   void dispose() {}
@@ -52,6 +74,10 @@ class ToolPluginRegistry {
 
   /// All registered plugins.
   List<ToolPlugin> get plugins => List.unmodifiable(_plugins);
+
+  /// All routes contributed by registered plugins.
+  List<PluginRoute> get routes =>
+      _plugins.expand((p) => p.routes).toList(growable: false);
 
   /// Dispatch an action to the appropriate handler.
   ///
