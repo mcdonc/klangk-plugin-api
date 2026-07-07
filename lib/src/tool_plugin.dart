@@ -42,6 +42,11 @@ abstract class ToolPlugin {
   /// the [ToolChunkSink]. Defaults to none, so existing plugins are unaffected.
   Map<String, StreamingToolHandler> get streamingHandlers => const {};
 
+  /// Optional widget to place in the app bar's actions row, before the
+  /// user email chip. Use for compact status indicators or toggles that
+  /// should always be visible. Return null if this plugin has no app bar UI.
+  Widget? buildAppBarAction(BuildContext context) => null;
+
   /// Optional overlay widget to mount in the workspace Stack.
   /// Return null if this plugin has no UI.
   Widget? buildOverlay(BuildContext context) => null;

@@ -157,6 +157,16 @@ void main() {
       expect(plugin.streamingHandlers, isEmpty);
     });
 
+    testWidgets('buildAppBarAction defaults to null', (tester) async {
+      final plugin = SimplePlugin();
+      late BuildContext ctx;
+      await tester.pumpWidget(Builder(builder: (c) {
+        ctx = c;
+        return const SizedBox();
+      }));
+      expect(plugin.buildAppBarAction(ctx), isNull);
+    });
+
     testWidgets('buildOverlay defaults to null', (tester) async {
       final plugin = SimplePlugin();
       late BuildContext ctx;
