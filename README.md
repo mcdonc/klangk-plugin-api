@@ -42,6 +42,32 @@ class MyPlugin extends ToolPlugin {
 }
 ```
 
+## Contributing a workspace tab
+
+A feature can contribute a workspace tab (mounted in the workspace tab strip)
+by extending `WorkspaceTabPlugin` instead of (or in addition to) `ToolPlugin`:
+
+```dart
+import 'package:klangk_plugin_api/klangk_plugin_api.dart';
+
+class MyTab extends WorkspaceTabPlugin {
+  @override
+  String get title => 'My Tab';
+
+  @override
+  IconData get icon => Icons.star;
+
+  @override
+  Widget build(BuildContext context) => const Center(child: Text('hello'));
+}
+```
+
+A feature package may implement `ToolPlugin`, `WorkspaceTabPlugin`, or both —
+e.g. a `chat` feature contributes both a chat tab and agent tool handlers.
+The host app registers active tabs into `WorkspaceTabRegistry` at boot and
+mounts them in the workspace shell; a feature shipped but inactive (filtered
+out by `KLANGKD_FEATURES_ENABLE`) never registers its tab.
+
 ## What's Included
 
 - `ToolPlugin` — abstract base class for plugins
@@ -49,5 +75,8 @@ class MyPlugin extends ToolPlugin {
 - `StreamingToolHandler` — function type for streaming action handlers
 - `PluginRoute` — route descriptor for plugin-contributed app routes
 - `ToolPluginRegistry` — plugin registration and dispatch
+- `WorkspaceTabPlugin` — abstract base class for a feature-contributed workspace tab
+- `WorkspaceTabRegistry` — registration for feature-contributed workspace tabs
+- `FileRenderer` / `FileRendererRegistry` / `FileRendererPlugin` — file-viewer abstraction
 - `baseUrl` — the Klangk backend API base URL (for plugins that need HTTP access)
 - `testBaseUrlOverride` — override for testing
