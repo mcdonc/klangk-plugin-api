@@ -1,7 +1,7 @@
 name: klangk_plugin_api
 description: API package for Klangk plugins — plugin base classes and the workspace-services host contract.
 publish_to: none
-version: 0.4.1
+version: 0.5.0
 
 environment:
   sdk: ^3.6.0
