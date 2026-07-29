@@ -19,8 +19,10 @@ abstract class WorkspaceServices {
   ChatServices? get chat;
 
   /// The current user's id — the authenticated identity driving the UI.
-  /// Replaces the feature's former `context.read<AuthService>().userId`.
-  String get currentUserId;
+  /// Nullable: the host may not have resolved the identity yet (e.g. the WS
+  /// handshake is still pending). Replaces the feature's former
+  /// `context.read<AuthService>().userId`.
+  String? get currentUserId;
 }
 
 /// Chat capabilities a feature reads from the host's WS client.
