@@ -1,6 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+/// A tab's strip-header badge (e.g. an unread count), exposed to the host
+/// via [WorkspaceTabPlugin.badge] as a [ValueListenable]. The host renders
+/// no badge when [count] is 0.
+class TabBadge {
+  /// The count to display in the badge (e.g. unread messages).
+  /// The host renders no badge when this is 0.
+  final int count;
+
+  /// Whether to highlight the badge (e.g. an @-mention / urgent).
+  /// Default false.
+  final bool highlight;
+
+  const TabBadge({required this.count, this.highlight = false});
+}
+
 /// A plugin that contributes a workspace tab.
 ///
 /// A feature declares a tab by extending this class and providing a [title],
@@ -14,20 +29,20 @@ import 'package:flutter/widgets.dart';
 /// registration). A feature shipped but inactive never registers its tab, so
 /// its tab is absent from the strip — its Dart is in the monolithic bundle
 /// but inert.
-/// A tab's strip-header badge (e.g. an unread count), exposed via
-/// [WorkspaceTabPlugin.badge] as a [ValueListenable] the host listens to.
-class TabBadge {
-  /// The count to display in the badge (e.g. unread messages).
-  /// The host renders no badge when this is 0.
-  final int count;
-
-  /// Whether to highlight the badge (e.g. an @-mention / urgent).
-  /// Default false.
-  final bool highlight;
-
-  const TabBadge({required this.count, this.highlight = false});
-}
-
+///
+/// ## Lifecycle
+///
+/// Tab instances are per-workspace-page (#3409). The host registers a
+/// factory once at app boot (`WorkspaceTabRegistry.register`), and each
+/// workspace page creates a fresh set of instances via
+/// `WorkspaceTabRegistry.createTabs()`, builds them, and disposes them when
+/// the page closes. A disposed instance is never rebuilt or reused, so
+/// [dispose] is terminal: the tab may freely mix in `ChangeNotifier` and
+/// release everything it owns. Per-workspace state belongs on the instance
+/// (each page gets its own), never in statics.
+///
+/// This differs from `ToolPlugin`, whose registry holds the app-lifetime
+/// instances themselves.
 abstract class WorkspaceTabPlugin {
   /// Tab title shown in the tab strip.
   String get title;
@@ -51,39 +66,50 @@ abstract class WorkspaceTabPlugin {
   /// messages read on view, or focus the input. Default no-op.
   void setVisible(bool visible) {}
 
-  /// Called when the tab plugin is disposed (the workspace closes).
-  /// Defaults to doing nothing; override to release resources.
+  /// Called when the workspace page that created this tab closes (#3409).
+  /// The instance is per-workspace-page: the host never reuses it after
+  /// this call — the next workspace page builds from a fresh instance. So
+  /// dispose is terminal; override it to release everything the tab owns
+  /// (calling `ChangeNotifier.dispose` from a mixin is safe).
   void dispose() {}
 }
 
-/// Registry of [WorkspaceTabPlugin]s. Mirrors `ToolPluginRegistry`: tabs are
-/// registered at app boot (only active features) and queried by the workspace
-/// shell to mount feature-contributed tabs in the tab strip.
-///
-/// Like `ToolPluginRegistry` this is a singleton — there is one app-wide set
-/// of feature tabs, registered once in `main()` and read by each workspace
-/// page.
+/// Registry of [WorkspaceTabPlugin] factories. Mirrors `ToolPluginRegistry`
+/// in being a boot-time singleton (there is one app-wide set of active
+/// feature tabs, registered once in `main()`), but it holds factories, not
+/// instances: each workspace page creates its own fresh tab instances via
+/// [createTabs] and disposes them when it closes (#3409), keeping
+/// `WorkspaceTabPlugin.dispose` terminal. `ToolPluginRegistry`, by contrast,
+/// holds the app-lifetime instances themselves.
 class WorkspaceTabRegistry {
   static final WorkspaceTabRegistry _instance = WorkspaceTabRegistry._();
   factory WorkspaceTabRegistry() => _instance;
   WorkspaceTabRegistry._();
 
-  final List<WorkspaceTabPlugin> _tabs = [];
+  final List<WorkspaceTabPlugin Function()> _factories = [];
 
-  /// Register a tab plugin. Call during app startup, after the active-feature
-  /// filter has resolved which features to mount.
-  void register(WorkspaceTabPlugin tab) {
-    _tabs.add(tab);
+  /// Register a tab factory. Call during app startup, after the
+  /// active-feature filter has resolved which features to mount. The
+  /// factory must not throw — `createTabs()` gives the created instances
+  /// no owner, so a factory failing mid-list would leak the ones already
+  /// created with no page to dispose them.
+  void register(WorkspaceTabPlugin Function() create) {
+    _factories.add(create);
   }
 
-  /// All registered tab plugins, in registration order.
-  List<WorkspaceTabPlugin> get tabs => List.unmodifiable(_tabs);
+  /// Create a fresh instance of every registered tab, in registration
+  /// order. Each workspace page calls this once when it mounts and owns
+  /// the returned instances for the page's lifetime — the page disposes
+  /// them when it closes, and the next page creates its own fresh set
+  /// from the same factories.
+  List<WorkspaceTabPlugin> createTabs() =>
+      List.unmodifiable([for (final create in _factories) create()]);
 
-  /// Dispose all tab plugins and clear the registry.
-  void disposeAll() {
-    for (final tab in _tabs) {
-      tab.dispose();
-    }
-    _tabs.clear();
+  /// Drop all registrations. The registry owns factories, not instances,
+  /// so this disposes nothing — the workspace pages that called
+  /// [createTabs] own (and dispose) the instances they created. Tests use
+  /// this to reset the process-global singleton between cases.
+  void clear() {
+    _factories.clear();
   }
 }

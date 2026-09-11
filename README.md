@@ -64,9 +64,20 @@ class MyTab extends WorkspaceTabPlugin {
 
 A feature package may implement `ToolPlugin`, `WorkspaceTabPlugin`, or both —
 e.g. a `chat` feature contributes both a chat tab and agent tool handlers.
-The host app registers active tabs into `WorkspaceTabRegistry` at boot and
-mounts them in the workspace shell; a feature shipped but inactive (filtered
-out by `KLANGKD_FEATURES_ENABLE`) never registers its tab.
+The host app registers a factory for each active tab into
+`WorkspaceTabRegistry` at boot and mounts the tabs in the workspace shell;
+a feature shipped but inactive (filtered out by `KLANGKD_FEATURES_ENABLE`)
+never registers its tab.
+
+### Tab lifecycle
+
+Tab instances are per-workspace-page (v0.6.0): the host registers a *factory*
+at boot (`WorkspaceTabRegistry.register(() => MyTab())`), and each workspace
+page creates a fresh set of instances (`createTabs()`), builds them, and
+disposes them when the page closes. A disposed tab is never reused, so
+`dispose()` is terminal — a tab may mix in `ChangeNotifier` and release
+everything it owns there. Per-workspace state belongs on the instance (each
+page gets its own), never in statics.
 
 ## What's Included
 
@@ -76,7 +87,7 @@ out by `KLANGKD_FEATURES_ENABLE`) never registers its tab.
 - `PluginRoute` — route descriptor for plugin-contributed app routes
 - `ToolPluginRegistry` — plugin registration and dispatch
 - `WorkspaceTabPlugin` — abstract base class for a feature-contributed workspace tab
-- `WorkspaceTabRegistry` — registration for feature-contributed workspace tabs
+- `WorkspaceTabRegistry` — factory registration for feature-contributed workspace tabs
 - `FileRenderer` / `FileRendererRegistry` / `FileRendererPlugin` — file-viewer abstraction
 - `baseUrl` — the Klangk backend API base URL (for plugins that need HTTP access)
 - `testBaseUrlOverride` — override for testing
