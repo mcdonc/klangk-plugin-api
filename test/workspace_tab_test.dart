@@ -34,6 +34,28 @@ class _DefaultDisposeTab extends WorkspaceTabPlugin {
   Widget build(BuildContext context) => const Text('default dispose tab');
 }
 
+/// The canonical #3409 shape: a tab mixing in ChangeNotifier (to own live
+/// state), whose dispose is terminal because instances are per page.
+class _NotifierTab extends WorkspaceTabPlugin with ChangeNotifier {
+  bool disposed = false;
+
+  @override
+  String get title => 'Notifier';
+
+  @override
+  IconData get icon => Icons.notifications;
+
+  @override
+  Widget build(BuildContext context) =>
+      ListenableBuilder(listenable: this, builder: (_, __) => const Text('n'));
+
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose(); // ChangeNotifier.dispose — terminal, never reused.
+  }
+}
+
 /// A tab plugin that exposes a live badge and observes setVisible.
 class _BadgedTab extends WorkspaceTabPlugin {
   final ValueNotifier<TabBadge?> _badge = ValueNotifier<TabBadge?>(null);
@@ -120,7 +142,7 @@ void main() {
     setUp(() {
       // The registry is a singleton shared across tests — start each clean.
       registry = WorkspaceTabRegistry();
-      registry.disposeAll();
+      registry.clear();
     });
 
     test('is a singleton', () {
@@ -130,27 +152,89 @@ void main() {
       );
     });
 
-    test('register adds a tab', () {
-      expect(registry.tabs, isEmpty);
+    test('register adds a factory whose createTabs instantiates it', () {
+      expect(registry.createTabs(), isEmpty);
+      registry.register(_TestTab.new);
+      final tabs = registry.createTabs();
+      expect(tabs.length, 1);
+      expect(tabs.last, isA<_TestTab>());
+    });
+
+    test('createTabs list is unmodifiable', () {
+      registry.register(_TestTab.new);
+      expect(
+        () => registry.createTabs().add(_TestTab()),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('createTabs preserves registration order across factories', () {
+      // The doc promises "in registration order" — pin it with two
+      // distinct factories (a type-permutation bug would flip both pages
+      // consistently and dodge the fresh-instance assertions).
+      registry
+        ..register(_TestTab.new)
+        ..register(_BadgedTab.new);
+      final tabs = registry.createTabs();
+      expect(tabs.first, isA<_TestTab>());
+      expect(tabs.last, isA<_BadgedTab>());
+    });
+
+    test(
+        'createTabs returns FRESH instances per call — a workspace page '
+        'owns its tabs and disposes them on close (#3409)', () {
+      registry
+        ..register(_TestTab.new)
+        ..register(_BadgedTab.new);
+      final pageOne = registry.createTabs();
+      final pageTwo = registry.createTabs();
+
+      // Same classes, same order — but no instance is shared between the
+      // two sets: each workspace page gets its own, so a page disposing
+      // its tabs can never poison the next page's.
+      expect(pageOne.length, pageTwo.length);
+      for (var i = 0; i < pageOne.length; i++) {
+        expect(identical(pageOne[i], pageTwo[i]), isFalse);
+        expect(pageTwo[i].runtimeType, pageOne[i].runtimeType);
+      }
+
+      // The page-lifecycle contract end-to-end: dispose page one's tabs
+      // (terminal), then page two's build/badge paths still work.
+      for (final tab in pageOne) {
+        tab.dispose();
+      }
+      final badged = pageTwo.whereType<_BadgedTab>().single;
+      badged._badge.value = const TabBadge(count: 1);
+      expect(badged.badge!.value!.count, 1);
+      badged.setVisible(true);
+      expect(badged.visibleCalls, 1);
+      addTearDown(badged.dispose);
+    });
+
+    test('a ChangeNotifier tab disposes terminally per page (#3409)', () {
+      // The canonical plugin shape the per-page contract protects: a tab
+      // mixing in ChangeNotifier (e.g. to own a live badge) calls
+      // ChangeNotifier.dispose on workspace close, which is terminal — and
+      // that is fine, because the instance is never reused.
+      registry.register(_NotifierTab.new);
+      final pageOne = registry.createTabs().single as _NotifierTab;
+      pageOne.dispose(); // terminal — no assert, no throw.
+      expect(pageOne.disposed, isTrue);
+
+      final pageTwo = registry.createTabs().single as _NotifierTab;
+      pageTwo.notifyListeners(); // the fresh instance is fully usable.
+      expect(pageTwo.disposed, isFalse);
+      addTearDown(pageTwo.dispose);
+    });
+
+    test('clear drops the registrations without touching instances', () {
       final tab = _TestTab();
-      registry.register(tab);
-      expect(registry.tabs.length, 1);
-      expect(registry.tabs.last, tab);
-    });
-
-    test('tabs list is unmodifiable', () {
-      expect(() => registry.tabs.add(_TestTab()), throwsUnsupportedError);
-    });
-
-    test('disposeAll disposes every tab and clears the registry', () {
-      final a = _TestTab();
-      final b = _TestTab();
-      registry.register(a);
-      registry.register(b);
-      registry.disposeAll();
-      expect(a.disposed, isTrue);
-      expect(b.disposed, isTrue);
-      expect(registry.tabs, isEmpty);
+      registry.register(() => tab);
+      registry.clear();
+      expect(registry.createTabs(), isEmpty);
+      // The registry owns factories, not instances — clearing must not
+      // dispose an instance some page still owns.
+      expect(tab.disposed, isFalse);
     });
   });
 }
